@@ -39,8 +39,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Data\NetworkConnectionConsts.cs" />
-    <Compile Include="Data\PacketFactory.cs" />
+    <Compile Include="Connection\ConnectionClient.cs" />
+    <Compile Include="Connection\ConnectionHelper.cs" />
+    <Compile Include="Data\NetworkConsts.cs" />
+    <Compile Include="Data\PacketHandler.cs" />
     <Compile Include="Extensions\NetworkStreamUtil.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
