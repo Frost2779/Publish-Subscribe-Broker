@@ -4,8 +4,6 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 
 namespace Broker {
     public class PubSubBroker {
@@ -13,7 +11,7 @@ namespace Broker {
         private bool _isBrokerAlive = false;
         private TcpListener _brokerTcpListener = null;
 
-		private ConcurrentDictionary<string, string> _topicDictionary; //Types are placeholder at the moment
+        private readonly TopicManager _topicManager = new TopicManager();
 
         public void Start() {
             SpoolTcpListener();
@@ -27,7 +25,6 @@ namespace Broker {
             _brokerTcpListener = new TcpListener(IPAddress.Parse(NetworkConsts.CONNECTION_IP), NetworkConsts.CONNECTION_PORT);
             _brokerTcpListener.Start();
         }
-
         private void NetworkConnectionHandleThread() {
             try {
                 while (_isBrokerAlive) {
@@ -57,7 +54,6 @@ namespace Broker {
             }
 
         }
-
         private void StartUserInputLoop() {
             while (_isBrokerAlive) {
                 string userInput = Console.ReadLine();
@@ -65,17 +61,18 @@ namespace Broker {
                 if (userInput.EqualsIgnoreCase("Quit")) {
                     BeginBrokerShutdown();
                 }
-                else if (userInput.EqualsIgnoreCase("List Topics")) {
-
-                }
-                else if (userInput.EqualsIgnoreCase("List Connections")) { 
-                
+                else if (userInput.EqualsIgnoreCase("List")) {
+                    PrintTopicList();
                 }
             }
         }
-
         private void BeginBrokerShutdown() {
             _isBrokerAlive = false;
+        }
+        private void PrintTopicList() {
+            foreach (string topicName in _topicManager.GetTopicNames()) {
+                Console.WriteLine($"\t[Topic] {topicName}");
+            }
         }
 
         private void HandlePublisherThread(NetworkStream pubNetworkStream, Guid connectionID) {
@@ -84,7 +81,9 @@ namespace Broker {
 
                 while (_isBrokerAlive) {
                     string packet = pubNetworkStream.ReadAllDataAsString();
+                    if (packet.EqualsIgnoreCase(PacketHandler.LIST_TOPICS_PACKET)) {
 
+                    }
                 }
                 SendBrokerShutdownMessage(pubNetworkStream);
             }
@@ -103,7 +102,6 @@ namespace Broker {
             }
             catch (Exception e) { HandleConnectionException(e, connectionID); }
         }
-
         private void HandleConnectionException(Exception e, Guid id) {
             Console.WriteLine($"Connection with client of ID '{id}' has dropped with the following error: \n {e.StackTrace}");
         }

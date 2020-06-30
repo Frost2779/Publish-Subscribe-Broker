@@ -1,8 +1,6 @@
 ﻿using NetworkCommon.Connection;
 using NetworkCommon.Data;
-using NetworkCommon.Extensions;
 using System;
-using System.Net.Sockets;
 
 namespace Subsciber {
     public class BrokerSubscriber : ConnectionClient {
@@ -18,10 +16,10 @@ namespace Subsciber {
             }
         }
 
-        protected override void IncomingStreamThread(NetworkStream stream) {
+        protected override void IncomingStreamThread() {
             try {
                 while (_isClientAlive) {
-                    Console.WriteLine(FormatBrokerMessage(stream.ReadAllDataAsString()));
+                    Console.WriteLine(FormatBrokerMessage(GetIncomingMessage()));
                 }
             }
             catch (Exception) { HandleDroppedBrokerConnection(); }

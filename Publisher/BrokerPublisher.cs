@@ -2,7 +2,6 @@
 using NetworkCommon.Data;
 using NetworkCommon.Extensions;
 using System;
-using System.Net.Sockets;
 
 namespace Publisher {
     public class BrokerPublisher : ConnectionClient {
@@ -14,14 +13,23 @@ namespace Publisher {
 
         private void StartUserInputLoop() {
             while (_isClientAlive) {
+                string userInput = Console.ReadLine();
+                if (userInput.EqualsIgnoreCase("Quit")) {
+                    _isClientAlive = false;
+                }
+                else if (userInput.EqualsIgnoreCase("List")) {
+                    SendNetworkMessage(PacketHandler.LIST_TOPICS_PACKET);
+                }
+                else {
 
+                }
             }
         }
 
-        protected override void IncomingStreamThread(NetworkStream stream) {
+        protected override void IncomingStreamThread() {
             try {
                 while (_isClientAlive) {
-                    Console.WriteLine(FormatBrokerMessage(stream.ReadAllDataAsString()));
+                    Console.WriteLine(FormatBrokerMessage(GetIncomingMessage()));
                 }
             }
             catch (Exception) { HandleDroppedBrokerConnection(); }
