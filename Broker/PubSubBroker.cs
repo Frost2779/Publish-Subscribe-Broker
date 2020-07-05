@@ -1,9 +1,13 @@
 ﻿using NetworkCommon.Data;
 using NetworkCommon.Extensions;
+using Newtonsoft.Json;
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
+
+using static NetworkCommon.Data.MessagePacket;
 
 namespace Broker {
     public class PubSubBroker {
@@ -31,14 +35,14 @@ namespace Broker {
                     TcpClient brokerClient = _brokerTcpListener.AcceptTcpClient();
                     Guid clientConnectionID = Guid.NewGuid();
                     NetworkStream connectionStream = brokerClient.GetStream();
-                    string idPacket = connectionStream.ReadAllDataAsString();
+                    MessagePacket idPacket = JsonConvert.DeserializeObject<MessagePacket>(connectionStream.ReadAllDataAsString());
 
-                    if (idPacket == PacketHandler.I_AM_PUBLISHER_PACKET) {
+                    if (idPacket.PacketType == PacketTypes.InitPublisherConnection) {
                         Thread publisherThread = new Thread(() => HandlePublisherThread(connectionStream, clientConnectionID));
                         publisherThread.Start();
                         Console.WriteLine($"[Publisher '{clientConnectionID}'] Connection made");
                     }
-                    else if (idPacket == PacketHandler.I_AM_SUBSCRIBER_PACKET) {
+                    else if (idPacket.PacketType == PacketTypes.InitSubscriberConnection) {
                         Thread publisherThread = new Thread(() => HandleSubscriberThread(connectionStream, clientConnectionID));
                         publisherThread.Start();
                         Console.WriteLine($"[Subscriber '{clientConnectionID}'] Connection made");
@@ -59,15 +63,15 @@ namespace Broker {
                 string userInput = Console.ReadLine();
 
                 if (userInput.EqualsIgnoreCase("Quit")) {
-                    BeginBrokerShutdown();
+                    _isBrokerAlive = false;
                 }
                 else if (userInput.EqualsIgnoreCase("List")) {
                     PrintTopicList();
                 }
+                else if (userInput.EqualsIgnoreCase("Help")) {
+                    PrintHelpInstructions();
+                }
             }
-        }
-        private void BeginBrokerShutdown() {
-            _isBrokerAlive = false;
         }
         private void PrintTopicList() {
             foreach (string topicName in _topicManager.GetTopicNames()) {
@@ -75,13 +79,21 @@ namespace Broker {
             }
         }
 
+        #region Code Smell
         private void HandlePublisherThread(NetworkStream pubNetworkStream, Guid connectionID) {
             try {
                 SendConnectionConfirmation(pubNetworkStream, connectionID);
 
                 while (_isBrokerAlive) {
-                    string packet = pubNetworkStream.ReadAllDataAsString();
-                    if (packet.EqualsIgnoreCase(PacketHandler.LIST_TOPICS_PACKET)) {
+                    MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(pubNetworkStream.ReadAllDataAsString());
+                    if (packet.PacketType == PacketTypes.Disconnect) {
+                        
+                        return;
+                    }
+                    else if (packet.PacketType == PacketTypes.ListTopics) {
+                        SendTopicList(pubNetworkStream);
+                    }
+                    else {
 
                     }
                 }
@@ -95,13 +107,20 @@ namespace Broker {
                 SendConnectionConfirmation(subNetworkStream, connectionID);
 
                 while (_isBrokerAlive) {
-                    string packet = subNetworkStream.ReadAllDataAsString();
+                    MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(subNetworkStream.ReadAllDataAsString());
+                    if (packet.PacketType == PacketTypes.ListTopics) {
+                        SendTopicList(subNetworkStream);
+                    }
+                    else {
 
+                    }
                 }
                 SendBrokerShutdownMessage(subNetworkStream);
             }
             catch (Exception e) { HandleConnectionException(e, connectionID); }
         }
+        #endregion
+
         private void HandleConnectionException(Exception e, Guid id) {
             Console.WriteLine($"Connection with client of ID '{id}' has dropped with the following error: \n {e.StackTrace}");
         }
@@ -111,6 +130,13 @@ namespace Broker {
         private void SendBrokerShutdownMessage(NetworkStream stream) {
             stream.Write("Broker is shutting down. Connection will be dropped.".AsASCIIBytes());
         }
+        private void PrintHelpInstructions() {
+            Console.WriteLine("<HELP INSTRUCTIONS>");
+        }
+        private void SendTopicList(NetworkStream stream) {
+            StringBuilder builder = new StringBuilder();
 
+
+        }
     }
 }

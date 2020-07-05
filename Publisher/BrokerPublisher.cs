@@ -1,13 +1,15 @@
 ﻿using NetworkCommon.Connection;
 using NetworkCommon.Data;
 using NetworkCommon.Extensions;
+using Newtonsoft.Json;
 using System;
+using static NetworkCommon.Data.MessagePacket;
 
 namespace Publisher {
     public class BrokerPublisher : ConnectionClient {
 
         public void Start() {
-            InitBrokerConnection(PacketHandler.I_AM_PUBLISHER_PACKET);
+            InitBrokerConnection(new MessagePacket(PacketTypes.InitPublisherConnection));
             StartUserInputLoop();
         }
 
@@ -18,21 +20,18 @@ namespace Publisher {
                     _isClientAlive = false;
                 }
                 else if (userInput.EqualsIgnoreCase("List")) {
-                    SendNetworkMessage(PacketHandler.LIST_TOPICS_PACKET);
+                    SendNetworkMessage(new MessagePacket(PacketTypes.ListTopics));
                 }
-                else {
+                else if (userInput.EqualsIgnoreCase("Create")) {
+
+                }
+                else if (userInput.EqualsIgnoreCase("Delete")) {
+
+                }
+                else if (userInput.EqualsIgnoreCase("Message")) {
 
                 }
             }
-        }
-
-        protected override void IncomingStreamThread() {
-            try {
-                while (_isClientAlive) {
-                    Console.WriteLine(FormatBrokerMessage(GetIncomingMessage()));
-                }
-            }
-            catch (Exception) { HandleDroppedBrokerConnection(); }
         }
 
         protected override void PrintInstructions() {

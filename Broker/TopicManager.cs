@@ -14,20 +14,28 @@ namespace Broker {
         }
 
         public void AddSubscriber(NetworkStream stream) {
-            _subscribers.Add(stream);
+            lock (_subscribers) {
+                _subscribers.Add(stream);
+            }
         }
 
         public void RemoveSubscriber(NetworkStream stream) {
-            _subscribers.Remove(stream);
+            lock (_subscribers) {
+                _subscribers.Remove(stream);
+            }
         }
 
         public void ClearSubscribers() {
-            _subscribers.Clear();
+            lock (_subscribers) {
+                _subscribers.Clear();
+            }
         }
 
         public void SendMessage(string message) {
-            foreach (NetworkStream stream in _subscribers) {
-                stream.Write($"[{Name}] {message}".AsASCIIBytes());
+            lock (_subscribers) {
+                foreach (NetworkStream stream in _subscribers) {
+                    stream.Write($"[{Name}] {message}".AsASCIIBytes());
+                }
             }
         }
     }
@@ -41,6 +49,19 @@ namespace Broker {
             }
 
             _topicDictionary[pubOwner].Add(new Topic(topicName));
+        }
+
+        public void RemoveTopic(Guid pubOwner, string topicName) {
+            if (_topicDictionary[pubOwner] == null) return;
+
+            List<Topic> topicList = _topicDictionary[pubOwner];
+            for (int i = 0; i < topicList.Count; i++) {
+                if (topicList[i].Name.EqualsIgnoreCase(topicName)) {
+                    topicList.RemoveAt(i);
+                    Console.WriteLine($"Topic '{topicName}' removed with owner guid of '{pubOwner}'");
+                    return;
+                }
+            }
         }
 
         #region Code Smell
@@ -59,7 +80,7 @@ namespace Broker {
         public void SubscribeToTopic(string topicName, NetworkStream clientStream) {
             foreach (List<Topic> topicList in _topicDictionary.Values) {
                 foreach (Topic topic in topicList) {
-                    if (topicName.EqualsIgnoreCase(topic.Name)) {
+                    if (topic.Name.EqualsIgnoreCase(topicName)) {
                         topic.AddSubscriber(clientStream);
                     }
                 }
@@ -69,7 +90,7 @@ namespace Broker {
         public void UnsubscribeFromTopic(string topicName, NetworkStream clientStream) {
             foreach (List<Topic> topicList in _topicDictionary.Values) {
                 foreach (Topic topic in topicList) {
-                    if (topicName.EqualsIgnoreCase(topic.Name)) {
+                    if (topic.Name.EqualsIgnoreCase(topicName)) {
                         topic.RemoveSubscriber(clientStream);
                     }
                 }
