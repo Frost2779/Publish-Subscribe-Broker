@@ -44,8 +44,10 @@ namespace Broker {
         private readonly ConcurrentDictionary<Guid, List<Topic>> _topicDictionary = new ConcurrentDictionary<Guid, List<Topic>>();
 
         public void CreateTopic(Guid pubOwner, string topicName) {
-            if (_topicDictionary[pubOwner] == null) {
-                _topicDictionary[pubOwner] = new List<Topic>();
+            List<Topic> pubTopicList;
+
+            if (!_topicDictionary.TryGetValue(pubOwner, out pubTopicList)) {
+                _topicDictionary.TryAdd(pubOwner, new List<Topic>());
             }
 
             _topicDictionary[pubOwner].Add(new Topic(topicName));

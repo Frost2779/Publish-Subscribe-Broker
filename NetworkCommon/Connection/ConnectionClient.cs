@@ -8,7 +8,7 @@ using static NetworkCommon.Data.MessagePacket;
 
 namespace NetworkCommon.Connection {
     public abstract class ConnectionClient {
-        protected const string COMMAND_PARSE_REGEX = "('{1}[A-z]+'{1})";
+        protected const string COMMAND_PARSE_REGEX = @"('{1}[A-z| ]+'{1})";
         protected bool _isClientAlive = false;
         private NetworkStream clientNetworkStream;
 
@@ -66,6 +66,11 @@ namespace NetworkCommon.Connection {
         }
         protected string GetIncomingMessage() {
             return clientNetworkStream.ReadAllDataAsString();
+        }
+        protected string TrimQuoteMarks(string s) {
+            string trimmed = s.Substring(1, s.Length - 2);
+
+            return trimmed;
         }
         protected abstract void PrintInstructions();
     }

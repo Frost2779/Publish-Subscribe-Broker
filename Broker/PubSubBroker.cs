@@ -2,6 +2,7 @@
 using NetworkCommon.Extensions;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -17,6 +18,7 @@ namespace Broker {
 
         private readonly TopicManager _topicManager = new TopicManager();
 
+        #region Init
         public void Start() {
             SpoolTcpListener();
             _isBrokerAlive = true;
@@ -66,20 +68,16 @@ namespace Broker {
                     _isBrokerAlive = false;
                 }
                 else if (userInput.EqualsIgnoreCase("List")) {
-                    PrintTopicList();
+                    PrintLocalTopicList();
                 }
                 else if (userInput.EqualsIgnoreCase("Help")) {
                     PrintHelpInstructions();
                 }
             }
         }
-        private void PrintTopicList() {
-            foreach (string topicName in _topicManager.GetTopicNames()) {
-                Console.WriteLine($"\t[Topic] {topicName}");
-            }
-        }
+        #endregion
 
-        #region Code Smell
+        #region Publisher
         private void HandlePublisherThread(NetworkStream pubNetworkStream, Guid connectionID) {
             try {
                 SendConnectionConfirmation(pubNetworkStream, connectionID);
@@ -87,21 +85,37 @@ namespace Broker {
                 while (_isBrokerAlive) {
                     MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(pubNetworkStream.ReadAllDataAsString());
                     if (packet.PacketType == PacketTypes.Disconnect) {
-                        Console.WriteLine($"Connection with client of ID '{connectionID}' has dropped.");
+                        Console.WriteLine($"Connection with client of ID '{connectionID}' has been closed by the client.");
                         return;
                     }
                     else if (packet.PacketType == PacketTypes.ListTopics) {
                         SendTopicList(pubNetworkStream);
                     }
-                    else {
+                    else if (packet.PacketType == PacketTypes.CreateTopic) {
+                        HandleCreateTopic(pubNetworkStream, connectionID, packet);
+                    }
+                    else if (packet.PacketType == PacketTypes.DeleteTopic) {
 
+                    }
+                    else if (packet.PacketType == PacketTypes.MessageTopic) { 
+                        
                     }
                 }
                 SendBrokerShutdownMessage(pubNetworkStream);
             }
             catch (Exception e) { HandleConnectionException(e, connectionID); }
         }
+        private void HandleCreateTopic(NetworkStream stream, Guid connectionID, MessagePacket packet) {
+            string topicName = packet.Data[0];
+            _topicManager.CreateTopic(connectionID, topicName);
+            SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                                $"Topic of name '{topicName}' has been successfully created."
+                            }));
+            Console.WriteLine($"Publisher '{connectionID}' has created the topic '{topicName}'");
+        }
+        #endregion
 
+        #region Subscriber
         private void HandleSubscriberThread(NetworkStream subNetworkStream, Guid connectionID) {
             try {
                 SendConnectionConfirmation(subNetworkStream, connectionID);
@@ -125,16 +139,26 @@ namespace Broker {
         }
         #endregion
 
+        #region Util
+        private void PrintLocalTopicList() {
+            foreach (string topicName in _topicManager.GetTopicNames()) {
+                Console.WriteLine($"\t[Topic] {topicName}");
+            }
+        }
         private void HandleConnectionException(Exception e, Guid id) {
-            Console.WriteLine($"Connection with client of ID '{id}' has dropped.");
+            Console.WriteLine($"Connection with client of ID '{id}' has dropped with the following exception: {e.Message}");
         }
         private void SendConnectionConfirmation(NetworkStream stream, Guid connectionID) {
-            string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, $"Connection made with broker. Given id '{connectionID}'"));
+            string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, new string[] {
+                $"Connection made with broker. Given id '{connectionID}'"
+            }));
 
             stream.Write(dataJson.AsASCIIBytes());
         }
         private void SendBrokerShutdownMessage(NetworkStream stream) {
-            string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, "Broker is shutting down. Connection will be dropped."));
+            string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, new string[] {
+                "Broker is shutting down. Connection will be dropped."
+            }));
 
             stream.Write(dataJson.AsASCIIBytes());
         }
@@ -143,8 +167,22 @@ namespace Broker {
         }
         private void SendTopicList(NetworkStream stream) {
             StringBuilder builder = new StringBuilder();
+            List<string> names = _topicManager.GetTopicNames();
 
-
+            for (int i = 0; i < names.Count; i++) {
+                if (i < names.Count - 2)
+                    builder.Append($"{names[i]}");
+                else
+                    builder.Append($"{names[i]}, ");
+            }
+            SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                builder.ToString()
+            }));
         }
+        private void SendMessage(NetworkStream stream, MessagePacket packet) {
+            string packetJson = JsonConvert.SerializeObject(packet);
+            stream.Write(packetJson.AsASCIIBytes());
+        }
+        #endregion
     }
 }

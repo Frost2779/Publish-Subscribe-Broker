@@ -8,6 +8,8 @@ using static NetworkCommon.Data.MessagePacket;
 namespace Publisher {
     public class BrokerPublisher : ConnectionClient {
 
+        private const int TOPIC_NAME = 0;
+
         public void Start() {
             InitBrokerConnection(new MessagePacket(PacketTypes.InitPublisherConnection));
             PrintInstructions();
@@ -24,37 +26,40 @@ namespace Publisher {
                     SendNetworkMessage(new MessagePacket(PacketTypes.ListTopics));
                 }
                 else if (userInput.EqualsIgnoreCase("Create")) {
-                    if (!HandleCreateCommand(Console.ReadLine())) continue;
+                    Console.WriteLine("What is the topic name you wish to create?");
+                    HandleCreateCommand(Console.ReadLine());
                 }
                 else if (userInput.EqualsIgnoreCase("Delete")) {
-                    if (!HandleDeleteCommand(Console.ReadLine())) continue;
+                    Console.WriteLine("What is the topic name you wish to delete?");
+                    HandleDeleteCommand(Console.ReadLine());
                 }
                 else if (userInput.EqualsIgnoreCase("Message")) {
-                    if (!HandleMessageCommand(Console.ReadLine())) continue;
+                    Console.WriteLine("What is the topic name and message you wish to send?");
+                    HandleMessageCommand(Console.ReadLine());
                 }
             }
         }
 
-        private bool HandleCreateCommand(string commandInput) {
-            string[] tokens = Regex.Split(commandInput, COMMAND_PARSE_REGEX);
-            if (tokens.Length < 1) {
-                Console.WriteLine("The 'Create' command requires a string input. Ex: Create 'This is a new topic'");
-                return false;
+        private void HandleCreateCommand(string commandInput) {
+            MatchCollection tokens = Regex.Matches(commandInput, COMMAND_PARSE_REGEX);
+
+            if (tokens.Count < 1) {
+                Console.WriteLine("The 'Create' command requires a string input. Ex: 'this is a topic name'");
+                return;
             }
+            string topicName = tokens[TOPIC_NAME].Value;
 
-            return true;
+            SendNetworkMessage(new MessagePacket(PacketTypes.CreateTopic, new string[] {
+                TrimQuoteMarks(topicName)
+            })); ;
         }
 
-        private bool HandleDeleteCommand(string commandInput) {
-            string[] tokens = Regex.Split(commandInput, COMMAND_PARSE_REGEX);
+        private void HandleDeleteCommand(string commandInput) {
 
-            return true;
         }
 
-        private bool HandleMessageCommand(string commandInput) {
-            string[] tokens = Regex.Split(commandInput, COMMAND_PARSE_REGEX);
+        private void HandleMessageCommand(string commandInput) {
 
-            return true;
         }
 
         protected override void PrintInstructions() {

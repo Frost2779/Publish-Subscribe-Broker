@@ -13,7 +13,7 @@ namespace NetworkCommon.Data {
         public MessagePacket(PacketTypes type) : this(type, new string[0]) { }
 
         [JsonConstructor]
-        public MessagePacket(PacketTypes type, params string[] data) {
+        public MessagePacket(PacketTypes type, string[] data) {
             PacketType = type;
             Data = data;
         }
