@@ -8,6 +8,7 @@ using static NetworkCommon.Data.MessagePacket;
 
 namespace NetworkCommon.Connection {
     public abstract class ConnectionClient {
+        protected const string COMMAND_PARSE_REGEX = "('{1}[A-z]+'{1})";
         protected bool _isClientAlive = false;
         private NetworkStream clientNetworkStream;
 
@@ -17,8 +18,8 @@ namespace NetworkCommon.Connection {
 
             byte[] packetData = messagePacketJson.AsASCIIBytes();
             clientNetworkStream.Write(packetData, 0, packetData.Length);
-            
-            
+
+
             Thread incomingStreamData = new Thread(() => IncomingStreamThread());
             incomingStreamData.Start();
             _isClientAlive = true;
@@ -28,6 +29,7 @@ namespace NetworkCommon.Connection {
             try {
                 while (_isClientAlive) {
                     MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(GetIncomingMessage());
+
                     if (packet.PacketType == PacketTypes.PrintData) {
                         foreach (string s in packet.Data) {
                             Console.WriteLine(FormatBrokerMessage(s));
@@ -41,7 +43,7 @@ namespace NetworkCommon.Connection {
             }
             catch (Exception e) {
                 Console.WriteLine(e.Message);
-                HandleDroppedBrokerConnection(); 
+                HandleDroppedBrokerConnection();
             }
         }
 
@@ -56,6 +58,11 @@ namespace NetworkCommon.Connection {
             string packetJson = JsonConvert.SerializeObject(packet);
             byte[] messageBytes = packetJson.AsASCIIBytes();
             clientNetworkStream.Write(messageBytes, 0, messageBytes.Length);
+        }
+        protected void ShutdownConnection() {
+            SendNetworkMessage(new MessagePacket(PacketTypes.Disconnect));
+            Console.WriteLine("Connection to the broker has been closed by the client.");
+            _isClientAlive = false;
         }
         protected string GetIncomingMessage() {
             return clientNetworkStream.ReadAllDataAsString();

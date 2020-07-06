@@ -87,7 +87,7 @@ namespace Broker {
                 while (_isBrokerAlive) {
                     MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(pubNetworkStream.ReadAllDataAsString());
                     if (packet.PacketType == PacketTypes.Disconnect) {
-                        
+                        Console.WriteLine($"Connection with client of ID '{connectionID}' has dropped.");
                         return;
                     }
                     else if (packet.PacketType == PacketTypes.ListTopics) {
@@ -108,7 +108,11 @@ namespace Broker {
 
                 while (_isBrokerAlive) {
                     MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(subNetworkStream.ReadAllDataAsString());
-                    if (packet.PacketType == PacketTypes.ListTopics) {
+                    if (packet.PacketType == PacketTypes.Disconnect) {
+                        Console.WriteLine($"Connection with client of ID '{connectionID}' has dropped.");
+                        return;
+                    }
+                    else if (packet.PacketType == PacketTypes.ListTopics) {
                         SendTopicList(subNetworkStream);
                     }
                     else {
@@ -122,13 +126,17 @@ namespace Broker {
         #endregion
 
         private void HandleConnectionException(Exception e, Guid id) {
-            Console.WriteLine($"Connection with client of ID '{id}' has dropped with the following error: \n {e.StackTrace}");
+            Console.WriteLine($"Connection with client of ID '{id}' has dropped.");
         }
         private void SendConnectionConfirmation(NetworkStream stream, Guid connectionID) {
-            stream.Write($"Connection made with broker. Given id '{connectionID}'".AsASCIIBytes());
+            string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, $"Connection made with broker. Given id '{connectionID}'"));
+
+            stream.Write(dataJson.AsASCIIBytes());
         }
         private void SendBrokerShutdownMessage(NetworkStream stream) {
-            stream.Write("Broker is shutting down. Connection will be dropped.".AsASCIIBytes());
+            string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, "Broker is shutting down. Connection will be dropped."));
+
+            stream.Write(dataJson.AsASCIIBytes());
         }
         private void PrintHelpInstructions() {
             Console.WriteLine("<HELP INSTRUCTIONS>");

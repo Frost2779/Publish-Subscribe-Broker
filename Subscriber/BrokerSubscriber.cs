@@ -1,7 +1,6 @@
 ﻿using NetworkCommon.Connection;
 using NetworkCommon.Data;
 using NetworkCommon.Extensions;
-using Newtonsoft.Json;
 using System;
 using static NetworkCommon.Data.MessagePacket;
 
@@ -10,6 +9,7 @@ namespace Subsciber {
 
         public void Start() {
             InitBrokerConnection(new MessagePacket(PacketTypes.InitSubscriberConnection));
+            PrintInstructions();
             StartUserInputLoop();
         }
 
@@ -17,7 +17,7 @@ namespace Subsciber {
             while (_isClientAlive) {
                 string userInput = Console.ReadLine();
                 if (userInput.EqualsIgnoreCase("Quit")) {
-                    _isClientAlive = false;
+                    ShutdownConnection();
                 }
                 else if (userInput.EqualsIgnoreCase("List")) {
                     SendNetworkMessage(new MessagePacket(PacketTypes.ListTopics));
@@ -25,8 +25,8 @@ namespace Subsciber {
                 else if (userInput.EqualsIgnoreCase("Sub")) {
 
                 }
-                else if (userInput.EqualsIgnoreCase("Unsub")) { 
-                    
+                else if (userInput.EqualsIgnoreCase("Unsub")) {
+
                 }
             }
         }
