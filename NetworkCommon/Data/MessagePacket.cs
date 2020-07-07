@@ -2,7 +2,7 @@
 
 namespace NetworkCommon.Data {
     public class MessagePacket {
-        public enum PacketTypes : byte { InitPublisherConnection, InitSubscriberConnection, Disconnect, ListTopics, CreateTopic, DeleteTopic, MessageTopic, SubToTopic, UnsubFromTopic, PrintData }
+        public enum PacketTypes : byte { InitPublisherConnection, InitSubscriberConnection, Disconnect, ListTopics, CreateTopic, DeleteTopic, SubToTopic, UnsubFromTopic, PrintData, TopicMessage }
 
         [JsonProperty]
         public PacketTypes PacketType;

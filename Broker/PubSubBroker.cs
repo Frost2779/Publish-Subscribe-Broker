@@ -95,10 +95,10 @@ namespace Broker {
                         HandleCreateTopic(pubNetworkStream, connectionID, packet);
                     }
                     else if (packet.PacketType == PacketTypes.DeleteTopic) {
-
+                        HandleDeleteTopic(pubNetworkStream, connectionID, packet);
                     }
-                    else if (packet.PacketType == PacketTypes.MessageTopic) { 
-                        
+                    else if (packet.PacketType == PacketTypes.TopicMessage) {
+
                     }
                 }
                 SendBrokerShutdownMessage(pubNetworkStream);
@@ -107,11 +107,36 @@ namespace Broker {
         }
         private void HandleCreateTopic(NetworkStream stream, Guid connectionID, MessagePacket packet) {
             string topicName = packet.Data[0];
-            _topicManager.CreateTopic(connectionID, topicName);
-            SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
-                                $"Topic of name '{topicName}' has been successfully created."
-                            }));
-            Console.WriteLine($"Publisher '{connectionID}' has created the topic '{topicName}'");
+            if (_topicManager.CreateTopic(connectionID, topicName)) {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"Topic of name '{topicName}' has been successfully created."
+                }));
+                Console.WriteLine($"Publisher '{connectionID}' has created the topic '{topicName}'");
+            }
+            else {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"Topic of name '{topicName}' has failed to be created by the broker."
+                }));
+                Console.WriteLine($"Publisher '{connectionID}' has tried to create the topic '{topicName}' but the broker has failed.");
+            }
+        }
+        private void HandleDeleteTopic(NetworkStream stream, Guid connectionID, MessagePacket packet) {
+            string topicName = packet.Data[0];
+            if (_topicManager.RemoveTopic(connectionID, topicName)) {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"Topic of name '{topicName}' has been successfully deleted."
+                }));
+                Console.WriteLine($"Publisher '{connectionID}' has deleted the topic '{topicName}'");
+            }
+            else {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"Topic of name '{topicName}' could not be deleted. Either it doesn't exist or you do not own the topic."
+                }));
+                Console.WriteLine($"Publisher '{connectionID}' tried to delete the topic '{topicName}'. Either it doesn't exist or they do not own the topic.");
+            }
+        }
+        private void HandleTopicMessage(NetworkStream stream, Guid connectionID, MessagePacket packet) { 
+            
         }
         #endregion
 
@@ -146,7 +171,7 @@ namespace Broker {
             }
         }
         private void HandleConnectionException(Exception e, Guid id) {
-            Console.WriteLine($"Connection with client of ID '{id}' has dropped with the following exception: {e.Message}");
+            Console.WriteLine($"Connection with client of ID '{id}' has dropped with the following exception: {e.Message}\n{e.StackTrace}");
         }
         private void SendConnectionConfirmation(NetworkStream stream, Guid connectionID) {
             string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, new string[] {

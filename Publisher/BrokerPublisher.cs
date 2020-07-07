@@ -26,16 +26,19 @@ namespace Publisher {
                     SendNetworkMessage(new MessagePacket(PacketTypes.ListTopics));
                 }
                 else if (userInput.EqualsIgnoreCase("Create")) {
-                    Console.WriteLine("What is the topic name you wish to create?");
+                    Console.Write("What is the topic name you wish to create?\n>");
                     HandleCreateCommand(Console.ReadLine());
                 }
                 else if (userInput.EqualsIgnoreCase("Delete")) {
-                    Console.WriteLine("What is the topic name you wish to delete?");
+                    Console.Write("What is the topic name you wish to delete?\n>");
                     HandleDeleteCommand(Console.ReadLine());
                 }
                 else if (userInput.EqualsIgnoreCase("Message")) {
-                    Console.WriteLine("What is the topic name and message you wish to send?");
+                    Console.Write("What is the topic name and message you wish to send?\n>");
                     HandleMessageCommand(Console.ReadLine());
+                }
+                else if (userInput.EqualsIgnoreCase("Help")) {
+                    PrintInstructions();
                 }
             }
         }
@@ -63,7 +66,7 @@ namespace Publisher {
         }
 
         protected override void PrintInstructions() {
-
+            throw new NotImplementedException();
         }
     }
 }

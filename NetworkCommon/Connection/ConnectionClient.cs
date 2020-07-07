@@ -32,11 +32,21 @@ namespace NetworkCommon.Connection {
 
                     if (packet.PacketType == PacketTypes.PrintData) {
                         foreach (string s in packet.Data) {
-                            Console.WriteLine(FormatBrokerMessage(s));
+                            Console.WriteLine($"[Broker] {s}");
                         }
                     }
+                    else if (packet.PacketType == PacketTypes.TopicMessage) {
+                        if (packet.Data.Length < 2) {
+                            Console.WriteLine($"[Client] Recieved a malformed 'TopicMessage' packet.");
+                            continue;
+                        }
+                        
+                        string topicName = packet.Data[0];
+                        string topicMessage = packet.Data[1];
+                        Console.WriteLine($"[{topicName}] {topicMessage}");
+                    }
                     else if (packet.PacketType == PacketTypes.Disconnect) {
-                        Console.WriteLine("Connection has been forcibly closed by the broker. Exiting...");
+                        Console.WriteLine("Connection has been forcibly closed by the broker.");
                         _isClientAlive = false;
                     }
                 }
@@ -47,9 +57,6 @@ namespace NetworkCommon.Connection {
             }
         }
 
-        protected string FormatBrokerMessage(string s) {
-            return $"[Broker] {s}";
-        }
         protected void HandleDroppedBrokerConnection() {
             Console.WriteLine("Connection to Broker has dropped");
             _isClientAlive = false;
