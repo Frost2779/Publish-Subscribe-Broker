@@ -116,7 +116,7 @@ namespace Broker {
             }
             else {
                 SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
-                    $"Topic of name '{topicName}' has failed to be created by the broker."
+                    $"Topic of name '{topicName}' has failed to be created by the broker. Make sure that the topic doesn't already exist."
                 }));
                 Console.WriteLine($"Publisher '{connectionID}' has tried to create the topic '{topicName}' but the broker has failed.");
             }
@@ -167,12 +167,18 @@ namespace Broker {
 
         #region Util
         private void PrintLocalTopicList() {
-            foreach (string topicName in _topicManager.GetTopicNames()) {
-                Console.WriteLine($"\t[Topic] {topicName}");
+            List<string> names = _topicManager.GetTopicNamesList();
+
+            foreach (string topicList in names) {
+                Console.WriteLine($"topicList");
             }
         }
         private void HandleConnectionException(Exception e, Guid id) {
+#if DEBUG
             Console.WriteLine($"Connection with client of ID '{id}' has dropped with the following exception: {e.Message}\n{e.StackTrace}");
+#else
+            Console.WriteLine($"Connection with client of ID '{id}' has dropped.");
+#endif
         }
         private void SendConnectionConfirmation(NetworkStream stream, Guid connectionID) {
             string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, new string[] {
@@ -189,18 +195,9 @@ namespace Broker {
             stream.Write(dataJson.AsASCIIBytes());
         }
         private void SendTopicList(NetworkStream stream) {
-            StringBuilder builder = new StringBuilder();
-            List<string> names = _topicManager.GetTopicNames();
+            List<string> names = _topicManager.GetTopicNamesList();
 
-            for (int i = 0; i < names.Count; i++) {
-                if (i <= names.Count - 1)
-                    builder.Append($"{names[i]}");
-                else
-                    builder.Append($"{names[i]}, ");
-            }
-            SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
-                builder.ToString()
-            }));
+            SendMessage(stream, new MessagePacket(PacketTypes.PrintData, names.ToArray()));
         }
         private void SendMessage(NetworkStream stream, MessagePacket packet) {
             string packetJson = JsonConvert.SerializeObject(packet);
@@ -209,6 +206,6 @@ namespace Broker {
         private void PrintHelpInstructions() {
             Console.WriteLine("<HELP INSTRUCTIONS>");
         }
-        #endregion
+#endregion
     }
 }

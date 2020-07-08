@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Sockets;
+using System.Text;
 using static NetworkCommon.Data.MessagePacket;
 
 namespace Broker {
@@ -56,6 +57,12 @@ namespace Broker {
                 _topicDictionary.TryAdd(pubOwner, pubTopicList);
             }
 
+            foreach (Topic t in pubTopicList) {
+                if (t.Name.EqualsIgnoreCase(topicName)) {
+                    return false;
+                }
+            }
+
             pubTopicList.Add(new Topic(topicName));
             return true;
         }
@@ -82,12 +89,31 @@ namespace Broker {
         }
 
         #region Code Smell
-        public List<string> GetTopicNames() {
+        public List<string> GetTopicNamesList() {
             List<string> names = new List<string>();
 
-            foreach (List<Topic> topicList in _topicDictionary.Values) {
-                foreach (Topic topic in topicList) {
-                    names.Add(topic.Name);
+            foreach (Guid key in _topicDictionary.Keys) {
+                List<Topic> pubTopicList;
+                if (_topicDictionary.TryGetValue(key, out pubTopicList)) {
+
+                    StringBuilder builder = new StringBuilder();
+
+                    for (int i = 0; i < pubTopicList.Count; i++) {
+                        string topicName = pubTopicList[i].Name;
+                        if (i == 0 && pubTopicList.Count > 1) {
+                            builder.Append($"[Owner: {key}] '{topicName}', ");
+                        }
+                        else if (i == 0) {
+                            builder.Append($"[Owner: {key}] '{topicName}'");
+                        }
+                        else if (i < pubTopicList.Count - 1) {
+                            builder.Append($"'{topicName}', ");
+                        }
+                        else {
+                            builder.Append($"'{topicName}'");
+                        }
+                    }
+                    names.Add(builder.ToString());
                 }
             }
 
