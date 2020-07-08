@@ -24,6 +24,7 @@ namespace Broker {
             _isBrokerAlive = true;
             Thread connectionHandler = new Thread(NetworkConnectionHandleThread);
             connectionHandler.Start();
+            PrintHelpInstructions();
             Console.WriteLine("Broker started");
             StartUserInputLoop();
         }
@@ -187,15 +188,12 @@ namespace Broker {
 
             stream.Write(dataJson.AsASCIIBytes());
         }
-        private void PrintHelpInstructions() {
-            Console.WriteLine("<HELP INSTRUCTIONS>");
-        }
         private void SendTopicList(NetworkStream stream) {
             StringBuilder builder = new StringBuilder();
             List<string> names = _topicManager.GetTopicNames();
 
             for (int i = 0; i < names.Count; i++) {
-                if (i < names.Count - 2)
+                if (i <= names.Count - 1)
                     builder.Append($"{names[i]}");
                 else
                     builder.Append($"{names[i]}, ");
@@ -207,6 +205,9 @@ namespace Broker {
         private void SendMessage(NetworkStream stream, MessagePacket packet) {
             string packetJson = JsonConvert.SerializeObject(packet);
             stream.Write(packetJson.AsASCIIBytes());
+        }
+        private void PrintHelpInstructions() {
+            Console.WriteLine("<HELP INSTRUCTIONS>");
         }
         #endregion
     }

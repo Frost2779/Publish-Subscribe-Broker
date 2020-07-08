@@ -32,7 +32,7 @@ namespace Subsciber {
         }
 
         protected override void PrintInstructions() {
-
+            Console.WriteLine("<HELP INSTRUCTIONS>");
         }
     }
 }

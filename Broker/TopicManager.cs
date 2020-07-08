@@ -113,7 +113,7 @@ namespace Broker {
         }
         #endregion
 
-        public void SendMessage(Guid topicOwner, string topicName, string topicMessage) {
+        public bool SendMessage(Guid topicOwner, string topicName, string topicMessage) {
             List<Topic> outPubTopicList;
 
             if (!_topicDictionary.TryGetValue(topicOwner, out outPubTopicList)) {
@@ -123,9 +123,12 @@ namespace Broker {
                             topicName,
                             topicMessage
                         }));
+
+                        return true;
                     }
                 }
             }
+            return false;
         }
     }
 }

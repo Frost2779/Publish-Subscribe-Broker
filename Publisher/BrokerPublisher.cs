@@ -47,7 +47,7 @@ namespace Publisher {
             MatchCollection tokens = Regex.Matches(commandInput, COMMAND_PARSE_REGEX);
 
             if (tokens.Count < 1) {
-                Console.WriteLine("The 'Create' command requires a string input. Ex: 'this is a topic name'");
+                Console.WriteLine("The 'Create' command requires a string input. Ex: \"this is a topic name\"");
                 return;
             }
             string topicName = tokens[TOPIC_NAME].Value;
@@ -66,7 +66,7 @@ namespace Publisher {
         }
 
         protected override void PrintInstructions() {
-            throw new NotImplementedException();
+            Console.WriteLine("<HELP INSTRUCTIONS>");
         }
     }
 }

@@ -8,7 +8,7 @@ using static NetworkCommon.Data.MessagePacket;
 
 namespace NetworkCommon.Connection {
     public abstract class ConnectionClient {
-        protected const string COMMAND_PARSE_REGEX = @"('{1}[A-z| ]+'{1})";
+        protected const string COMMAND_PARSE_REGEX = "(\"{1}[A-z 0-9]+\"{1})";
         protected bool _isClientAlive = false;
         private NetworkStream clientNetworkStream;
 
