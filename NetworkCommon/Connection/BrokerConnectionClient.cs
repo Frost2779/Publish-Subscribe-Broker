@@ -7,7 +7,7 @@ using System.Threading;
 using static NetworkCommon.Data.MessagePacket;
 
 namespace NetworkCommon.Connection {
-    public abstract class ConnectionClient {
+    public abstract class BrokerConnectionClient {
         protected const string COMMAND_PARSE_REGEX = "(\"{1}[A-z 0-9]+\"{1})";
         protected bool _isClientAlive = false;
         private NetworkStream clientNetworkStream;
@@ -20,12 +20,12 @@ namespace NetworkCommon.Connection {
             clientNetworkStream.Write(packetData, 0, packetData.Length);
 
 
-            Thread incomingStreamData = new Thread(() => IncomingStreamThread());
+            Thread incomingStreamData = new Thread(() => IncomingPacketStreamThread());
             incomingStreamData.Start();
             _isClientAlive = true;
         }
 
-        protected void IncomingStreamThread() {
+        protected void IncomingPacketStreamThread() {
             try {
                 while (_isClientAlive) {
                     MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(GetIncomingMessage());
@@ -40,7 +40,7 @@ namespace NetworkCommon.Connection {
                             Console.WriteLine($"[Client] Recieved a malformed 'TopicMessage' packet.");
                             continue;
                         }
-                        
+
                         string topicName = packet.Data[0];
                         string topicMessage = packet.Data[1];
                         Console.WriteLine($"[{topicName}] {topicMessage}");
@@ -71,13 +71,11 @@ namespace NetworkCommon.Connection {
             Console.WriteLine("Connection to the broker has been closed by the client.");
             _isClientAlive = false;
         }
-        protected string GetIncomingMessage() {
+        private string GetIncomingMessage() {
             return clientNetworkStream.ReadAllDataAsString();
         }
         protected string TrimQuoteMarks(string s) {
-            string trimmed = s.Substring(1, s.Length - 2);
-
-            return trimmed;
+            return s.Substring(1, s.Length - 2);
         }
         protected abstract void PrintInstructions();
     }

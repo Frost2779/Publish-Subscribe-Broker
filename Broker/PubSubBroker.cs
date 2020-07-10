@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 
 using static NetworkCommon.Data.MessagePacket;
@@ -85,6 +84,7 @@ namespace Broker {
 
                 while (_isBrokerAlive) {
                     MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(pubNetworkStream.ReadAllDataAsString());
+
                     if (packet.PacketType == PacketTypes.Disconnect) {
                         Console.WriteLine($"Connection with client of ID '{connectionID}' has been closed by the client.");
                         return;
@@ -99,7 +99,7 @@ namespace Broker {
                         HandleDeleteTopic(pubNetworkStream, connectionID, packet);
                     }
                     else if (packet.PacketType == PacketTypes.TopicMessage) {
-
+                        HandleTopicMessage(pubNetworkStream, connectionID, packet);
                     }
                 }
                 SendBrokerShutdownMessage(pubNetworkStream);
@@ -136,8 +136,8 @@ namespace Broker {
                 Console.WriteLine($"Publisher '{connectionID}' tried to delete the topic '{topicName}'. Either it doesn't exist or they do not own the topic.");
             }
         }
-        private void HandleTopicMessage(NetworkStream stream, Guid connectionID, MessagePacket packet) { 
-            
+        private void HandleTopicMessage(NetworkStream stream, Guid connectionID, MessagePacket packet) {
+
         }
         #endregion
 
@@ -148,6 +148,7 @@ namespace Broker {
 
                 while (_isBrokerAlive) {
                     MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(subNetworkStream.ReadAllDataAsString());
+
                     if (packet.PacketType == PacketTypes.Disconnect) {
                         Console.WriteLine($"Connection with client of ID '{connectionID}' has dropped.");
                         return;
@@ -155,13 +156,22 @@ namespace Broker {
                     else if (packet.PacketType == PacketTypes.ListTopics) {
                         SendTopicList(subNetworkStream);
                     }
-                    else {
-
+                    else if (packet.PacketType == PacketTypes.SubToTopic) {
+                        HandleSubToTopic(subNetworkStream, connectionID, packet);
+                    }
+                    else if (packet.PacketType == PacketTypes.UnsubFromTopic) {
+                        HandleUnsubFromTopic(subNetworkStream, connectionID, packet);
                     }
                 }
                 SendBrokerShutdownMessage(subNetworkStream);
             }
             catch (Exception e) { HandleConnectionException(e, connectionID); }
+        }
+        private void HandleSubToTopic(NetworkStream stream, Guid connectionID, MessagePacket packet) { 
+        
+        }
+        private void HandleUnsubFromTopic(NetworkStream stream, Guid connectionID, MessagePacket packet) { 
+        
         }
         #endregion
 
@@ -170,7 +180,7 @@ namespace Broker {
             List<string> names = _topicManager.GetTopicNamesList();
 
             foreach (string topicList in names) {
-                Console.WriteLine($"topicList");
+                Console.WriteLine($"{topicList}");
             }
         }
         private void HandleConnectionException(Exception e, Guid id) {
@@ -181,22 +191,17 @@ namespace Broker {
 #endif
         }
         private void SendConnectionConfirmation(NetworkStream stream, Guid connectionID) {
-            string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, new string[] {
+            SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
                 $"Connection made with broker. Given id '{connectionID}'"
             }));
-
-            stream.Write(dataJson.AsASCIIBytes());
         }
         private void SendBrokerShutdownMessage(NetworkStream stream) {
-            string dataJson = JsonConvert.SerializeObject(new MessagePacket(PacketTypes.PrintData, new string[] {
+            SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
                 "Broker is shutting down. Connection will be dropped."
             }));
-
-            stream.Write(dataJson.AsASCIIBytes());
         }
         private void SendTopicList(NetworkStream stream) {
             List<string> names = _topicManager.GetTopicNamesList();
-
             SendMessage(stream, new MessagePacket(PacketTypes.PrintData, names.ToArray()));
         }
         private void SendMessage(NetworkStream stream, MessagePacket packet) {
@@ -206,6 +211,6 @@ namespace Broker {
         private void PrintHelpInstructions() {
             Console.WriteLine("<HELP INSTRUCTIONS>");
         }
-#endregion
+        #endregion
     }
 }

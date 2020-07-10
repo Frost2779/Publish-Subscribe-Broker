@@ -48,7 +48,7 @@ namespace Broker {
 
     public class TopicManager {
         private readonly ConcurrentDictionary<Guid, List<Topic>> _topicDictionary = new ConcurrentDictionary<Guid, List<Topic>>();
-
+ 
         public bool CreateTopic(Guid pubOwner, string topicName) {
             List<Topic> pubTopicList;
 
@@ -76,7 +76,7 @@ namespace Broker {
             for (int i = 0; i < pubTopicList.Count; i++) {
                 Topic topic = pubTopicList[i];
                 if (topic.Name.EqualsIgnoreCase(topicName)) {
-                    topic.SendMessage(new MessagePacket(PacketTypes.PrintData, new string[] { 
+                    topic.SendMessage(new MessagePacket(PacketTypes.PrintData, new string[] {
                         $"The topic named '{topic.Name}' has been deleted and you will no longer recieve messages from it."
                     }));
                     topic.ClearSubscribers();
@@ -145,7 +145,7 @@ namespace Broker {
             if (!_topicDictionary.TryGetValue(topicOwner, out outPubTopicList)) {
                 foreach (Topic topic in outPubTopicList) {
                     if (topicName.EqualsIgnoreCase(topic.Name)) {
-                        topic.SendMessage(new MessagePacket(PacketTypes.TopicMessage, new string[] { 
+                        topic.SendMessage(new MessagePacket(PacketTypes.TopicMessage, new string[] {
                             topicName,
                             topicMessage
                         }));

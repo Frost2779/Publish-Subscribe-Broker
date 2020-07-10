@@ -5,7 +5,7 @@ using System;
 using static NetworkCommon.Data.MessagePacket;
 
 namespace Subsciber {
-    public class BrokerSubscriber : ConnectionClient {
+    public class BrokerSubscriber : BrokerConnectionClient {
 
         public void Start() {
             InitBrokerConnection(new MessagePacket(PacketTypes.InitSubscriberConnection));

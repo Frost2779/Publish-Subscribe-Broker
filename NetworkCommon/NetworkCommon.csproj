@@ -42,7 +42,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Connection\ConnectionClient.cs" />
+    <Compile Include="Connection\BrokerConnectionClient.cs" />
     <Compile Include="Connection\ConnectionHelper.cs" />
     <Compile Include="Data\MessagePacket.cs" />
     <Compile Include="Data\NetworkConsts.cs" />

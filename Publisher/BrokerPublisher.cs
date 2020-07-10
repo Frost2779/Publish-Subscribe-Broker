@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using static NetworkCommon.Data.MessagePacket;
 
 namespace Publisher {
-    public class BrokerPublisher : ConnectionClient {
+    public class BrokerPublisher : BrokerConnectionClient {
 
         private const int TOPIC_NAME = 0;
 
@@ -54,7 +54,7 @@ namespace Publisher {
 
             SendNetworkMessage(new MessagePacket(PacketTypes.CreateTopic, new string[] {
                 TrimQuoteMarks(topicName)
-            })); ;
+            }));
         }
 
         private void HandleDeleteCommand(string commandInput) {
@@ -66,7 +66,12 @@ namespace Publisher {
         }
 
         protected override void PrintInstructions() {
-            Console.WriteLine("<HELP INSTRUCTIONS>");
+            Console.WriteLine("Quit - Exits the application and terminates the connection with the broker.\n" +
+                              "Help - Prints out this command description block.\n" +
+                              "List - \n" +
+                              "Create - \n" +
+                              "Delete - \n" +
+                              "Message - ");
         }
     }
 }
