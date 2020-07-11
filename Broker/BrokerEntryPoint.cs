@@ -1,4 +1,5 @@
 ﻿#define DEBUG
+#undef DEBUG
 
 using System;
 

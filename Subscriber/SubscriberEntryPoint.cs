@@ -7,7 +7,7 @@ namespace Subsciber {
                 BrokerSubscriber client = new BrokerSubscriber();
                 client.Start();
             }
-            catch (Exception e) { Console.WriteLine(e.StackTrace); }
+            catch (Exception) { Console.WriteLine("Subscriber errored when trying to connect to the broker."); }
             Console.Read();
         }
     }

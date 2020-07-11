@@ -7,7 +7,7 @@ namespace Publisher {
                 BrokerPublisher publisher = new BrokerPublisher();
                 publisher.Start();
             }
-            catch (Exception e) { Console.WriteLine(e.StackTrace); }
+            catch (Exception) { Console.WriteLine("Publisher errored when trying to connect to the broker."); }
             Console.Read();
         }
     }

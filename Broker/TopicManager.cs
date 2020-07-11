@@ -48,11 +48,10 @@ namespace Broker {
 
     public class TopicManager {
         private readonly ConcurrentDictionary<Guid, List<Topic>> _topicDictionary = new ConcurrentDictionary<Guid, List<Topic>>();
- 
-        public bool CreateTopic(Guid pubOwner, string topicName) {
-            List<Topic> pubTopicList;
 
-            if (!_topicDictionary.TryGetValue(pubOwner, out pubTopicList)) {
+        public bool CreateTopic(Guid pubOwner, string topicName) {
+
+            if (!_topicDictionary.TryGetValue(pubOwner, out List<Topic> pubTopicList)) {
                 pubTopicList = new List<Topic>();
                 _topicDictionary.TryAdd(pubOwner, pubTopicList);
             }
@@ -68,9 +67,8 @@ namespace Broker {
         }
 
         public bool RemoveTopic(Guid pubOwner, string topicName) {
-            List<Topic> pubTopicList;
 
-            if (!_topicDictionary.TryGetValue(pubOwner, out pubTopicList))
+            if (!_topicDictionary.TryGetValue(pubOwner, out List<Topic> pubTopicList))
                 return false;
 
             for (int i = 0; i < pubTopicList.Count; i++) {
@@ -87,14 +85,23 @@ namespace Broker {
             }
             return false;
         }
+        public void RemoveAllTopicsFromPublisher(Guid pubOwner) {
+            _topicDictionary.TryRemove(pubOwner, out List<Topic> outTopicList);
+        }
+        public void UnsubscibeFromAll(NetworkStream stream) {
+            foreach (List<Topic> topicList in _topicDictionary.Values) {
+                foreach (Topic topic in topicList) {
+                    topic.RemoveSubscriber(stream);
+                }
+            }
+        }
 
         #region Code Smell
         public List<string> GetTopicNamesList() {
             List<string> names = new List<string>();
 
             foreach (Guid key in _topicDictionary.Keys) {
-                List<Topic> pubTopicList;
-                if (_topicDictionary.TryGetValue(key, out pubTopicList)) {
+                if (_topicDictionary.TryGetValue(key, out List<Topic> pubTopicList)) {
 
                     StringBuilder builder = new StringBuilder();
 
@@ -119,38 +126,48 @@ namespace Broker {
 
             return names;
         }
-        public void SubscribeToTopic(string topicName, NetworkStream clientStream) {
+        public bool SubscribeToTopic(string topicName, NetworkStream clientStream) {
             foreach (List<Topic> topicList in _topicDictionary.Values) {
                 foreach (Topic topic in topicList) {
                     if (topic.Name.EqualsIgnoreCase(topicName)) {
-                        topic.AddSubscriber(clientStream);
+                        lock (topic) {
+                            topic.AddSubscriber(clientStream);
+                            return true;
+                        }
                     }
                 }
             }
+            return false;
         }
-        public void UnsubscribeFromTopic(string topicName, NetworkStream clientStream) {
+        public bool UnsubscribeFromTopic(string topicName, NetworkStream clientStream) {
             foreach (List<Topic> topicList in _topicDictionary.Values) {
                 foreach (Topic topic in topicList) {
                     if (topic.Name.EqualsIgnoreCase(topicName)) {
-                        topic.RemoveSubscriber(clientStream);
+                        lock (topic) {
+                            topic.RemoveSubscriber(clientStream);
+                            return true;
+                        }
                     }
                 }
             }
+            return false;
         }
         #endregion
 
         public bool SendMessage(Guid topicOwner, string topicName, string topicMessage) {
-            List<Topic> outPubTopicList;
-
-            if (!_topicDictionary.TryGetValue(topicOwner, out outPubTopicList)) {
+            if (_topicDictionary.TryGetValue(topicOwner, out List<Topic> outPubTopicList)) {
                 foreach (Topic topic in outPubTopicList) {
+                    Console.WriteLine($"topicName: {topicName}, topic.Name: {topic.Name}");
                     if (topicName.EqualsIgnoreCase(topic.Name)) {
-                        topic.SendMessage(new MessagePacket(PacketTypes.TopicMessage, new string[] {
-                            topicName,
-                            topicMessage
-                        }));
+                        Console.WriteLine("     Was True");
+                        lock (topic) {
+                            topic.SendMessage(new MessagePacket(PacketTypes.TopicMessage, new string[] {
+                                topicName,
+                                topicMessage
+                            }));
 
-                        return true;
+                            return true;
+                        }
                     }
                 }
             }

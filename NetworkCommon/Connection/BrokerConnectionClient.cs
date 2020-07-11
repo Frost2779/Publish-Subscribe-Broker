@@ -8,7 +8,10 @@ using static NetworkCommon.Data.MessagePacket;
 
 namespace NetworkCommon.Connection {
     public abstract class BrokerConnectionClient {
-        protected const string COMMAND_PARSE_REGEX = "(\"{1}[A-z 0-9]+\"{1})";
+        protected const int TOPIC_NAME = 0;
+        protected const int MESSAGE = 1;
+
+        protected const string COMMAND_PARSE_REGEX = "(\"{1}[ !#-z]+\"{1})";
         protected bool _isClientAlive = false;
         private NetworkStream clientNetworkStream;
 
@@ -41,8 +44,8 @@ namespace NetworkCommon.Connection {
                             continue;
                         }
 
-                        string topicName = packet.Data[0];
-                        string topicMessage = packet.Data[1];
+                        string topicName = packet.Data[TOPIC_NAME];
+                        string topicMessage = packet.Data[MESSAGE];
                         Console.WriteLine($"[{topicName}] {topicMessage}");
                     }
                     else if (packet.PacketType == PacketTypes.Disconnect) {

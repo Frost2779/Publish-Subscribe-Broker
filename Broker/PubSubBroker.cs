@@ -87,6 +87,7 @@ namespace Broker {
 
                     if (packet.PacketType == PacketTypes.Disconnect) {
                         Console.WriteLine($"Connection with client of ID '{connectionID}' has been closed by the client.");
+                        _topicManager.RemoveAllTopicsFromPublisher(connectionID);
                         return;
                     }
                     else if (packet.PacketType == PacketTypes.ListTopics) {
@@ -103,6 +104,7 @@ namespace Broker {
                     }
                 }
                 SendBrokerShutdownMessage(pubNetworkStream);
+                _topicManager.RemoveAllTopicsFromPublisher(connectionID);
             }
             catch (Exception e) { HandleConnectionException(e, connectionID); }
         }
@@ -137,7 +139,21 @@ namespace Broker {
             }
         }
         private void HandleTopicMessage(NetworkStream stream, Guid connectionID, MessagePacket packet) {
+            string topicName = packet.Data[0];
+            string topicMessage = packet.Data[1];
 
+            if (_topicManager.SendMessage(connectionID, topicName, topicMessage)) {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"You have published the message '{topicMessage}' to the topic '{topicName}'"
+                }));
+                Console.WriteLine($"Publisher '{connectionID}' has sent the message '{topicMessage}' to the topic '{topicName}'");
+            }
+            else {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"Could not send a message to the topic '{topicName}'. Either it doesn't exist or you do not own the topic."
+                }));
+                Console.WriteLine($"Publisher '{connectionID}' tried to send a message to '{topicName}', but it failed");
+            }
         }
         #endregion
 
@@ -151,6 +167,7 @@ namespace Broker {
 
                     if (packet.PacketType == PacketTypes.Disconnect) {
                         Console.WriteLine($"Connection with client of ID '{connectionID}' has dropped.");
+                        _topicManager.UnsubscibeFromAll(subNetworkStream);
                         return;
                     }
                     else if (packet.PacketType == PacketTypes.ListTopics) {
@@ -164,14 +181,39 @@ namespace Broker {
                     }
                 }
                 SendBrokerShutdownMessage(subNetworkStream);
+                _topicManager.UnsubscibeFromAll(subNetworkStream);
             }
             catch (Exception e) { HandleConnectionException(e, connectionID); }
         }
-        private void HandleSubToTopic(NetworkStream stream, Guid connectionID, MessagePacket packet) { 
-        
+        private void HandleSubToTopic(NetworkStream stream, Guid connectionID, MessagePacket packet) {
+            string topicName = packet.Data[0];
+            if (_topicManager.SubscribeToTopic(topicName, stream)) {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"You have successfully subscribed to the topic '{topicName}'"
+                }));
+                Console.WriteLine($"Subscriber '{connectionID}' has subscribed to the topic '{topicName}'");
+            }
+            else {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"You have failed subscribed to the topic '{topicName}'. This is because the topic doesn't exist."
+                }));
+                Console.WriteLine($"Subscriber '{connectionID}' tried to subscribed to the topic '{topicName}', but it didn't exist.");
+            }
         }
-        private void HandleUnsubFromTopic(NetworkStream stream, Guid connectionID, MessagePacket packet) { 
-        
+        private void HandleUnsubFromTopic(NetworkStream stream, Guid connectionID, MessagePacket packet) {
+            string topicName = packet.Data[0];
+            if (_topicManager.UnsubscribeFromTopic(topicName, stream)) {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"You have successfully unsubscribed from the topic '{topicName}'"
+                }));
+                Console.WriteLine($"Subscriber '{connectionID}' has unsubscribed from the topic '{topicName}'");
+            }
+            else {
+                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                    $"You have failed to unsubscribed from the topic '{topicName}'. This is because the topic doesn't exist."
+                }));
+                Console.WriteLine($"Subscriber '{connectionID}' tried to unsubscribed from the topic '{topicName}', but it didn't exist.");
+            }
         }
         #endregion
 
@@ -209,7 +251,9 @@ namespace Broker {
             stream.Write(packetJson.AsASCIIBytes());
         }
         private void PrintHelpInstructions() {
-            Console.WriteLine("<HELP INSTRUCTIONS>");
+            Console.WriteLine("Quit - Exits the application and terminates the connection with the broker.\n" +
+                              "Help - Prints out this command description block.\n" +
+                              "List - Prints out the list of current topics and the GUID of who owns them.\n");
         }
         #endregion
     }
