@@ -157,9 +157,7 @@ namespace Broker {
         public bool SendMessage(Guid topicOwner, string topicName, string topicMessage) {
             if (_topicDictionary.TryGetValue(topicOwner, out List<Topic> outPubTopicList)) {
                 foreach (Topic topic in outPubTopicList) {
-                    Console.WriteLine($"topicName: {topicName}, topic.Name: {topic.Name}");
                     if (topicName.EqualsIgnoreCase(topic.Name)) {
-                        Console.WriteLine("     Was True");
                         lock (topic) {
                             topic.SendMessage(new MessagePacket(PacketTypes.TopicMessage, new string[] {
                                 topicName,

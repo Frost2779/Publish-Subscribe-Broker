@@ -16,7 +16,7 @@ namespace Publisher {
 
         private void StartUserInputLoop() {
             while (_isClientAlive) {
-                string userInput = Console.ReadLine();
+                string userInput = Console.ReadLine().Trim();
                 if (userInput.EqualsIgnoreCase("Quit")) {
                     ShutdownConnection();
                 }
