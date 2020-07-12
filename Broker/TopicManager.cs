@@ -56,16 +56,17 @@ namespace Broker {
                 _topicDictionary.TryAdd(pubOwner, pubTopicList);
             }
 
-            foreach (Topic t in pubTopicList) {
-                if (t.Name.EqualsIgnoreCase(topicName)) {
-                    return false;
+            foreach (List<Topic> topicList in _topicDictionary.Values) {
+                foreach (Topic t in topicList) {
+                    if (t.Name.EqualsIgnoreCase(topicName)) {
+                        return false;
+                    }
                 }
             }
 
             pubTopicList.Add(new Topic(topicName));
             return true;
         }
-
         public bool RemoveTopic(Guid pubOwner, string topicName) {
 
             if (!_topicDictionary.TryGetValue(pubOwner, out List<Topic> pubTopicList))
