@@ -4,7 +4,6 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -18,8 +17,8 @@ namespace Broker {
         private TcpListener _brokerTcpListener = null;
 
         private readonly TopicManager _topicManager = TopicManager.Instance;
-        private ConcurrentDictionary<Guid, BaseBrokerHandler> _publishers = new ConcurrentDictionary<Guid, BaseBrokerHandler>();
-        private ConcurrentDictionary<Guid, BaseBrokerHandler> _subscribers = new ConcurrentDictionary<Guid, BaseBrokerHandler>();
+        private readonly ConcurrentDictionary<Guid, BaseBrokerHandler> _publishers = new ConcurrentDictionary<Guid, BaseBrokerHandler>();
+        private readonly ConcurrentDictionary<Guid, BaseBrokerHandler> _subscribers = new ConcurrentDictionary<Guid, BaseBrokerHandler>();
 
         #region Init
         public void Start() {

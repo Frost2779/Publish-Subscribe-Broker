@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using static NetworkCommon.Data.MessagePacket;
@@ -47,141 +48,125 @@ namespace Broker {
     }
 
     public class TopicManager {
-        private readonly ConcurrentDictionary<Guid, List<Topic>> _topicDictionary = new ConcurrentDictionary<Guid, List<Topic>>();
+        private readonly ConcurrentDictionary<Guid, Dictionary<string, Topic>> _topicDictionary = new ConcurrentDictionary<Guid, Dictionary<string, Topic>>();
 
         private TopicManager() { }
 
         public static TopicManager Instance {
             get {
-                if (_instance == null)
-                    _instance = new TopicManager();
-                return _instance;
+                lock (_instance) {
+                    if (_instance == null)
+                        _instance = new TopicManager();
+                    return _instance;
+                }
             }
         }
         private static TopicManager _instance = null;
 
         public bool CreateTopic(Guid pubOwner, string topicName) {
 
-            if (!_topicDictionary.TryGetValue(pubOwner, out List<Topic> pubTopicList)) {
-                pubTopicList = new List<Topic>();
-                _topicDictionary.TryAdd(pubOwner, pubTopicList);
+            if (!_topicDictionary.TryGetValue(pubOwner, out Dictionary<string, Topic> pubTopicDictionary)) {
+                pubTopicDictionary = new Dictionary<string, Topic>();
+                _topicDictionary.TryAdd(pubOwner, pubTopicDictionary);
             }
 
-            foreach (List<Topic> topicList in _topicDictionary.Values) {
-                foreach (Topic t in topicList) {
-                    if (t.Name.EqualsIgnoreCase(topicName)) {
-                        return false;
-                    }
-                }
-            }
+            if (pubTopicDictionary.ContainsKey(topicName))
+                return false;
 
-            pubTopicList.Add(new Topic(topicName));
+            pubTopicDictionary.Add(topicName, new Topic(topicName));
             return true;
         }
         public bool RemoveTopic(Guid pubOwner, string topicName) {
 
-            if (!_topicDictionary.TryGetValue(pubOwner, out List<Topic> pubTopicList))
+            if (!_topicDictionary.TryGetValue(pubOwner, out Dictionary<string, Topic> pubTopicDictionary))
                 return false;
 
-            for (int i = 0; i < pubTopicList.Count; i++) {
-                Topic topic = pubTopicList[i];
-                if (topic.Name.EqualsIgnoreCase(topicName)) {
-                    topic.SendMessage(new MessagePacket(PacketTypes.PrintData, new string[] {
+            if (pubTopicDictionary.ContainsKey(topicName)) {
+                Topic topic = pubTopicDictionary[topicName];
+                topic.SendMessage(new MessagePacket(PacketTypes.PrintData, new string[] {
                         $"The topic named '{topic.Name}' has been deleted and you will no longer recieve messages from it."
                     }));
-                    topic.ClearSubscribers();
+                topic.ClearSubscribers();
 
-                    pubTopicList.RemoveAt(i);
-                    return true;
-                }
+                pubTopicDictionary.Remove(topicName);
+                return true;
             }
             return false;
         }
         public void RemoveAllTopicsFromPublisher(Guid pubOwner) {
-            _topicDictionary.TryRemove(pubOwner, out List<Topic> outTopicList);
+            _topicDictionary.TryRemove(pubOwner, out Dictionary<string, Topic> outTopicList);
         }
         public void UnsubscibeFromAll(NetworkStream stream) {
-            foreach (List<Topic> topicList in _topicDictionary.Values) {
-                foreach (Topic topic in topicList) {
+            foreach (Dictionary<string, Topic> topicDictionary in _topicDictionary.Values) {
+                foreach (Topic topic in topicDictionary.Values) {
                     topic.RemoveSubscriber(stream);
                 }
             }
         }
-
-        #region Code Smell
         public List<string> GetTopicNamesList() {
             List<string> names = new List<string>();
 
             foreach (Guid key in _topicDictionary.Keys) {
-                if (_topicDictionary.TryGetValue(key, out List<Topic> pubTopicList)) {
+                _topicDictionary.TryGetValue(key, out Dictionary<string, Topic> pubTopicDictionary);
+                StringBuilder builder = new StringBuilder();
 
-                    StringBuilder builder = new StringBuilder();
+                List<string> topicNames = pubTopicDictionary.Keys.ToList();
 
-                    for (int i = 0; i < pubTopicList.Count; i++) {
-                        string topicName = pubTopicList[i].Name;
-                        if (i == 0 && pubTopicList.Count > 1) {
-                            builder.Append($"[Owner: {key}] '{topicName}', ");
-                        }
-                        else if (i == 0) {
-                            builder.Append($"[Owner: {key}] '{topicName}'");
-                        }
-                        else if (i < pubTopicList.Count - 1) {
-                            builder.Append($"'{topicName}', ");
-                        }
-                        else {
-                            builder.Append($"'{topicName}'");
-                        }
+                for (int i = 0; i < topicNames.Count; i++) {
+                    string topicName = topicNames[i];
+                    if (i == 0 && topicNames.Count > 1) {
+                        builder.Append($"[Owner: {key}] '{topicName}', ");
                     }
-                    names.Add(builder.ToString());
+                    else if (i == 0) {
+                        builder.Append($"[Owner: {key}] '{topicName}'");
+                    }
+                    else if (i < topicNames.Count - 1) {
+                        builder.Append($"'{topicName}', ");
+                    }
+                    else {
+                        builder.Append($"'{topicName}'");
+                    }
                 }
+                names.Add(builder.ToString());
             }
 
             return names;
         }
         public bool SubscribeToTopic(string topicName, NetworkStream clientStream) {
-            foreach (List<Topic> topicList in _topicDictionary.Values) {
-                foreach (Topic topic in topicList) {
-                    if (topic.Name.EqualsIgnoreCase(topicName)) {
-                        lock (topic) {
-                            topic.AddSubscriber(clientStream);
-                            return true;
-                        }
-                    }
-                }
+            Topic subTopic;
+            if ((subTopic = FindTopic(topicName)) != null) {
+                subTopic.AddSubscriber(clientStream);
+                return true;
             }
             return false;
         }
         public bool UnsubscribeFromTopic(string topicName, NetworkStream clientStream) {
-            foreach (List<Topic> topicList in _topicDictionary.Values) {
-                foreach (Topic topic in topicList) {
-                    if (topic.Name.EqualsIgnoreCase(topicName)) {
-                        lock (topic) {
-                            topic.RemoveSubscriber(clientStream);
-                            return true;
-                        }
-                    }
+            Topic unSubTopic;
+            if ((unSubTopic = FindTopic(topicName)) != null) {
+                unSubTopic.RemoveSubscriber(clientStream);
+                return true;
+            }
+            return false;
+        }
+        public bool SendMessage(Guid topicOwner, string topicName, string topicMessage) {
+            if (_topicDictionary.TryGetValue(topicOwner, out Dictionary<string, Topic> outPubTopicList)) {
+                if (outPubTopicList.ContainsKey(topicName)) {
+                    outPubTopicList[topicName].SendMessage(new MessagePacket(PacketTypes.TopicMessage, new string[] {
+                                topicName,
+                                topicMessage
+                            }));
                 }
             }
             return false;
         }
-        #endregion
-
-        public bool SendMessage(Guid topicOwner, string topicName, string topicMessage) {
-            if (_topicDictionary.TryGetValue(topicOwner, out List<Topic> outPubTopicList)) {
-                foreach (Topic topic in outPubTopicList) {
-                    if (topicName.EqualsIgnoreCase(topic.Name)) {
-                        lock (topic) {
-                            topic.SendMessage(new MessagePacket(PacketTypes.TopicMessage, new string[] {
-                                topicName,
-                                topicMessage
-                            }));
-
-                            return true;
-                        }
-                    }
+        private Topic FindTopic(string topicName) {
+            Topic found = null;
+            foreach (Dictionary<string, Topic> topicDictionary in _topicDictionary.Values) {
+                if (topicDictionary.ContainsKey(topicName)) {
+                    return topicDictionary[topicName];
                 }
             }
-            return false;
+            return found;
         }
     }
 }

@@ -2,7 +2,6 @@
 using NetworkCommon.Extensions;
 using Newtonsoft.Json;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using static NetworkCommon.Data.MessagePacket;
 
