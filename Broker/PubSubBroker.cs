@@ -2,7 +2,9 @@
 using NetworkCommon.Extensions;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -15,7 +17,9 @@ namespace Broker {
         private bool _isBrokerAlive = false;
         private TcpListener _brokerTcpListener = null;
 
-        private readonly TopicManager _topicManager = new TopicManager();
+        private readonly TopicManager _topicManager = TopicManager.Instance;
+        private ConcurrentDictionary<Guid, BaseBrokerHandler> _publishers = new ConcurrentDictionary<Guid, BaseBrokerHandler>();
+        private ConcurrentDictionary<Guid, BaseBrokerHandler> _subscribers = new ConcurrentDictionary<Guid, BaseBrokerHandler>();
 
         #region Init
         public void Start() {
@@ -40,20 +44,22 @@ namespace Broker {
                     MessagePacket idPacket = JsonConvert.DeserializeObject<MessagePacket>(connectionStream.ReadAllDataAsString());
 
                     if (idPacket.PacketType == PacketTypes.InitPublisherConnection) {
-                        new Thread(() => PublisherHandler.InitNewThread(
+                        PublisherHandler handler = new PublisherHandler();
+                        handler.OnHandlerShutdownEvent += Handler_OnShutdownPublisherEvent;
+                        _publishers.TryAdd(clientConnectionID, handler);
+                        new Thread(() => handler.InitNewThread(
                                                     connectionStream,
-                                                    clientConnectionID,
-                                                    _topicManager,
-                                                    ref _isBrokerAlive
+                                                    clientConnectionID
                                                     )).Start();
                         Console.WriteLine($"[Publisher '{clientConnectionID}'] Connection made");
                     }
                     else if (idPacket.PacketType == PacketTypes.InitSubscriberConnection) {
-                        new Thread(() => SubscriberHandler.InitNewThread(
+                        SubscriberHandler handler = new SubscriberHandler();
+                        handler.OnHandlerShutdownEvent += Handler_OnShutdownSubscriberEvent;
+                        _subscribers.TryAdd(clientConnectionID, handler);
+                        new Thread(() => handler.InitNewThread(
                                                     connectionStream,
-                                                    clientConnectionID,
-                                                    _topicManager,
-                                                    ref _isBrokerAlive
+                                                    clientConnectionID
                                                     )).Start();
                         Console.WriteLine($"[Subscriber '{clientConnectionID}'] Connection made");
                     }
@@ -67,7 +73,25 @@ namespace Broker {
                 _isBrokerAlive = false;
             }
 
+            if (!_isBrokerAlive) {
+                foreach (Guid handlerID in _publishers.Keys) {
+                    _publishers[handlerID].ShutdownHandler();
+                }
+                foreach (Guid handlerID in _subscribers.Keys) {
+                    _subscribers[handlerID].ShutdownHandler();
+                }
+            }
+
         }
+
+        private void Handler_OnShutdownPublisherEvent(Guid handlerID) {
+            _publishers.TryRemove(handlerID, out BaseBrokerHandler val);
+        }
+
+        private void Handler_OnShutdownSubscriberEvent(Guid handlerID) {
+            _subscribers.TryRemove(handlerID, out BaseBrokerHandler val);
+        }
+
         private void StartUserInputLoop() {
             while (_isBrokerAlive) {
                 string userInput = Console.ReadLine();

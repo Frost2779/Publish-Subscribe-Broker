@@ -49,6 +49,17 @@ namespace Broker {
     public class TopicManager {
         private readonly ConcurrentDictionary<Guid, List<Topic>> _topicDictionary = new ConcurrentDictionary<Guid, List<Topic>>();
 
+        private TopicManager() { }
+
+        public static TopicManager Instance {
+            get {
+                if (_instance == null)
+                    _instance = new TopicManager();
+                return _instance;
+            }
+        }
+        private static TopicManager _instance = null;
+
         public bool CreateTopic(Guid pubOwner, string topicName) {
 
             if (!_topicDictionary.TryGetValue(pubOwner, out List<Topic> pubTopicList)) {

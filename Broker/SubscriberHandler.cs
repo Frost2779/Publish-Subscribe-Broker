@@ -7,62 +7,62 @@ using static NetworkCommon.Data.MessagePacket;
 
 namespace Broker {
     internal class SubscriberHandler : BaseBrokerHandler {
-        internal static void InitNewThread(NetworkStream subNetworkStream, Guid connectionID, TopicManager topicManager, ref bool isBrokerAlive) {
+        internal void InitNewThread(NetworkStream subNetworkStream, Guid connectionID) {
             try {
-                SendConnectionConfirmation(subNetworkStream, connectionID);
+                SendConnectionConfirmation();
 
-                while (isBrokerAlive) {
+                while (IsBrokerAlive) {
                     MessagePacket packet = JsonConvert.DeserializeObject<MessagePacket>(subNetworkStream.ReadAllDataAsString());
 
                     if (packet.PacketType == PacketTypes.Disconnect) {
                         Console.WriteLine($"Connection with client of ID '{connectionID}' has dropped.");
-                        topicManager.UnsubscibeFromAll(subNetworkStream);
+                        TopicManagerInstance.UnsubscibeFromAll(subNetworkStream);
                         return;
                     }
                     else if (packet.PacketType == PacketTypes.ListTopics) {
-                        SendTopicList(subNetworkStream, topicManager);
+                        SendTopicList();
                     }
                     else if (packet.PacketType == PacketTypes.SubToTopic) {
-                        HandleSubToTopic(subNetworkStream, connectionID, topicManager, packet);
+                        HandleSubToTopic(packet);
                     }
                     else if (packet.PacketType == PacketTypes.UnsubFromTopic) {
-                        HandleUnsubFromTopic(subNetworkStream, connectionID, topicManager, packet);
+                        HandleUnsubFromTopic(packet);
                     }
                 }
-                SendBrokerShutdownMessage(subNetworkStream);
-                topicManager.UnsubscibeFromAll(subNetworkStream);
+                SendBrokerShutdownMessage();
+                TopicManagerInstance.UnsubscibeFromAll(subNetworkStream);
             }
             catch (Exception e) { HandleConnectionException(e, connectionID); }
         }
 
-        private static void HandleSubToTopic(NetworkStream stream, Guid connectionID, TopicManager topicManager, MessagePacket packet) {
+        private void HandleSubToTopic(MessagePacket packet) {
             string topicName = packet.Data[0];
-            if (topicManager.SubscribeToTopic(topicName, stream)) {
-                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+            if (TopicManagerInstance.SubscribeToTopic(topicName, HandlerNetworkStream)) {
+                SendMessage(new MessagePacket(PacketTypes.PrintData, new string[] {
                     $"You have successfully subscribed to the topic '{topicName}'"
                 }));
-                Console.WriteLine($"Subscriber '{connectionID}' has subscribed to the topic '{topicName}'");
+                Console.WriteLine($"Subscriber '{ConnectionID}' has subscribed to the topic '{topicName}'");
             }
             else {
-                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                SendMessage(new MessagePacket(PacketTypes.PrintData, new string[] {
                     $"You have failed subscribed to the topic '{topicName}'. This is because the topic doesn't exist."
                 }));
-                Console.WriteLine($"Subscriber '{connectionID}' tried to subscribed to the topic '{topicName}', but it didn't exist.");
+                Console.WriteLine($"Subscriber '{ConnectionID}' tried to subscribed to the topic '{topicName}', but it didn't exist.");
             }
         }
-        private static void HandleUnsubFromTopic(NetworkStream stream, Guid connectionID, TopicManager topicManager, MessagePacket packet) {
+        private void HandleUnsubFromTopic(MessagePacket packet) {
             string topicName = packet.Data[0];
-            if (topicManager.UnsubscribeFromTopic(topicName, stream)) {
-                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+            if (TopicManagerInstance.UnsubscribeFromTopic(topicName, HandlerNetworkStream)) {
+                SendMessage(new MessagePacket(PacketTypes.PrintData, new string[] {
                     $"You have successfully unsubscribed from the topic '{topicName}'"
                 }));
-                Console.WriteLine($"Subscriber '{connectionID}' has unsubscribed from the topic '{topicName}'");
+                Console.WriteLine($"Subscriber '{ConnectionID}' has unsubscribed from the topic '{topicName}'");
             }
             else {
-                SendMessage(stream, new MessagePacket(PacketTypes.PrintData, new string[] {
+                SendMessage(new MessagePacket(PacketTypes.PrintData, new string[] {
                     $"You have failed to unsubscribed from the topic '{topicName}'. This is because the topic doesn't exist."
                 }));
-                Console.WriteLine($"Subscriber '{connectionID}' tried to unsubscribed from the topic '{topicName}', but it didn't exist.");
+                Console.WriteLine($"Subscriber '{ConnectionID}' tried to unsubscribed from the topic '{topicName}', but it didn't exist.");
             }
         }
     }
